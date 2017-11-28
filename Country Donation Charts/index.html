@@ -1,0 +1,536 @@
+<html>
+    <head>
+        <title>D3 Implementation</title>
+        <script src="d3.js"></script>
+        <style>
+            
+            body {
+                text-align: center;
+            }
+            svg {
+                border: solid 1px #000;
+            }
+            .graticule {
+                fill: none;
+                stroke: #777;
+                stroke-width: 1px;
+                stroke-opacity: .5;
+            }
+
+            #sphere {
+                fill: none;
+                stroke-width: 2px;
+                stroke: black;
+            }
+            
+            .dropbtn {
+                background-color: #4CAF50;
+                color: white;
+                padding: 16px;
+                font-size: 16px;
+                border: none;
+                cursor: pointer;
+            }
+
+            .dropbtn:hover, .dropbtn:focus {
+                background-color: #3e8e41;
+            }
+            #myInput {
+                background-image: url('searchicon.png');
+                background-position: 14px 12px;
+                background-repeat: no-repeat;
+                font-size: 16px;
+                padding: 14px 20px 12px 45px;
+                border: none;
+            }
+
+            .dropdown {
+                position: relative;
+                display: inline-block;
+            }
+
+            .dropdown-content {
+                display: none;
+                position: absolute;
+                background-color: #f6f6f6;
+                min-width: 230px;
+                overflow: auto;
+                box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+                z-index: 1;
+            }
+
+            .dropdown-content a {
+                color: black;
+                padding: 12px 16px;
+                text-decoration: none;
+                display: block;
+            }
+
+            .dropdown a:hover {background-color: #ddd}
+
+            .show {display:block;}
+            
+        </style>
+    </head>
+    <body>
+        <h1>Maps for Donated/Received</h1>
+        <svg id="map">
+            <text
+              text-anchor="middle"
+              dx = "400"
+              dy = "399"
+              style="
+                     font-size: 25;
+                     font-family: arial;
+                     font-weight: bold;
+                     fill: #017be3
+                     "
+            >
+            Received
+            </text>
+            
+        </svg>
+        
+        <svg id="map2">
+            <text
+              text-anchor="middle"
+              dx = "400"
+              dy = "399"
+              style="
+                     font-size: 25;
+                     font-family: arial;
+                     font-weight: bold;
+                     fill: #d800ff
+                     "
+            >
+            Donated
+            </text>
+        </svg>
+        
+        <h1>Distribution Over Time Chart -- Purpose Map</h1>
+        
+        <svg id = "lineChart">
+        </svg>
+        
+        <svg id = "purposeMap">
+        </svg>
+        <h1></h1>
+
+        <!-- Dropdown for countries -->
+        <div class="dropdown">
+        <button onclick="myFunction()" class="dropbtn">Country</button>
+          <div id="myDropdown" class="dropdown-content">
+            <input type="text" placeholder="Search.." id="myInput" onkeyup="filterFunction()">
+            <a href="javascript:updateLineChart('Australia');">Australia</a> <!-- This section is to update the chart to a new country-->
+            <a href="javascript:updateLineChart('Austria');">Austria</a> <!-- I did not add all the countries for lack of time --> 
+            <a href="javascript:updateLineChart('Belgium');">Belgium</a> <!-- I am sure there is an algorithm to populate this section but again I did not have time-->
+            <a href="javascript:updateLineChart('Canada');">Canada</a>
+            <a href="javascript:updateLineChart('Colombia');">Colombia</a>
+            <a href="javascript:updateLineChart('Italy');">Italy</a>
+            <a href="javascript:updateLineChart('United Kingdom');">United Kingdom</a>
+            <a href="javascript:updateLineChart('United States');">United States</a>
+          </div>
+        </div>
+        
+    </body>
+    <script>
+        
+        const WIDTH = 800
+        const HEIGHT = 400
+        const MARGIN = {
+            left: 50,
+            top: 30,
+            bottom: 40,
+            right: 30
+        }
+
+        const CHART_BODY_WIDTH = WIDTH - MARGIN.left - MARGIN.right;
+        const CHART_BODY_HEIGHT = HEIGHT - MARGIN.top - MARGIN.bottom;
+    
+        //Uncommented parts most likely are from previous assignments, or just console.log testing
+        function drawBaseMap(mapData, aggDonation, containerID) {
+            let maximumMagnitude = d3.max(mapData.features, d => d.properties.value);
+            let minMagnitude2 = d3.min(mapData.features, d => d.properties.value);
+            let colorScale = d3.scaleLinear()
+                .range(["#ffeb00", "#800000"])
+                .domain([minMagnitude2, maximumMagnitude])
+            //console.log(colorScale.domain())
+            
+
+            let container = d3.select(containerID)
+            
+            // Create Projection
+            let projection = d3
+                .geoNaturalEarth1()
+                //.geoOrthographic()
+                .fitSize([WIDTH, HEIGHT-50], mapData)
+                .translate([WIDTH/2, HEIGHT/2])
+                .rotate([200,0])
+            
+            //Create geoPath 
+            let path = d3.geoPath()
+                .projection(projection);
+
+            //Draw Sphere - Border Around the map
+            container.append("path")
+                .datum({type: "Sphere"})
+                .attr("fill", "white")
+                .attr("stroke", "black")
+                .attr("strike-width", 1)
+                .attr("d", path)
+            
+            //Draw Graticule 
+            let graticule = d3.geoGraticule()
+            container.append("g")
+                .append("path")
+                .datum(graticule)
+                .attr("d", path)
+                .attr("class", "graticule")
+
+            //Draw Map - Draw the countries borders
+            container
+                .append("g")
+                //.attr("transform", `scale (2, -2) translate(${WIDTH/4}, ${-HEIGHT/4})`) //removed for projection
+                .selectAll("path")
+                .data(mapData.features)
+                .enter()
+                    .append("path")
+                        .attr("fill", d => d.properties.value ? colorScale(d.properties.value) : "#555")  
+                        .attr("d", path)
+                        .attr("stroke", "white")
+                        .attr("stroke-width", 0.5)
+                        .append("title")
+                            .text(d => d.properties.name)
+            
+            plotdonationByYear(aggDonation, projection, container)
+        }
+
+        function plotdonationByYear(aggDonation, projection, container) {
+            //Add one dot for each donation (data: donationByYear)
+            let positionedDonationByYear = aggDonation.map(d => { 
+                let pixel_coordinates = projection([d.longitude, d.latitude])
+                d.x = pixel_coordinates[0]
+                d.y = pixel_coordinates[1]
+                return d;
+                })
+            container.append("g")
+                .selectAll("circle")
+                .data(positionedDonationByYear)
+                .enter()
+                .append("circle")
+                    .attr("fill", "green")
+                    .attr("r", 3)
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y)
+        }
+        
+        //This merging is only for the received donations, the next one is for donating
+        function mergeInfoIntoMapData(mapData, data) {
+            //console.log(mapData.features.length - data.length)
+            count = 0
+            mapData.features = mapData.features.map(geoFeature => {
+                let dataInfo = data.find(d => d.country === geoFeature.properties.name)
+                if(!dataInfo) {
+                    //console.log("Didn't find", geoFeature.properties.name) commented out for clarity in the console (there are a lot missing)
+                    return geoFeature
+                }
+                
+                //This merging is only for the received donations, the next one is for donating
+                geoFeature.properties.value = +dataInfo.received
+                //console.log(geoFeature.properties.value)
+                return geoFeature
+            })
+            
+        }        
+
+        //This merging is only for the donating, the previous one is for receiving
+        function mergeInfoIntoMapData2(mapData, data) {
+            //console.log(mapData.features.length - data.length)
+            count = 0
+            mapData.features = mapData.features.map(geoFeature => {
+                let dataInfo = data.find(d => d.country === geoFeature.properties.name)
+                if(!dataInfo) {
+                    //console.log("Didn't find", geoFeature.properties.name) commented out for clarity in the console (there are a lot missing)
+                    return geoFeature
+                }
+                
+                //This merging is only for the donating, the previous one is for receiving
+                geoFeature.properties.value = +dataInfo.donated
+                //console.log(geoFeature.properties.value)
+                return geoFeature
+            })
+            
+        }
+        
+        //This mergins is only for the purpose csv file
+        function mergeInfoIntoMapData3(mapData, data) {
+            //console.log(mapData.features.length - data.length)
+            count = 0
+            mapData.features = mapData.features.map(geoFeature => {
+                let dataInfo = data.find(d => d.country === geoFeature.properties.name)
+                if(!dataInfo) {
+                    //console.log("Didn't find", geoFeature.properties.name)
+                    return geoFeature
+                }
+                
+                //This mergins is only for the purpose csv file
+                geoFeature.properties.value = dataInfo.purpose
+                //console.log(geoFeature.properties.value)
+                return geoFeature
+            })
+            
+        }
+
+function drawPurposeMap(mapData, purpose, containerID) {
+            
+            //Did Ordinal because linear gives me one color, black
+            let colorScale = d3.scaleOrdinal()
+                .range(["pink", "green", "blue", "yellow", "orange", "purple", "white", "brown", "coral", "cyan", "magenta"])
+                //This domain is to pull whichever purpose had the largest donated value, I did not finish this so it's showing the pink if it has Administrative costs
+                .domain([purpose[0].purpose, purpose[1].purpose, purpose[2].purpose, purpose[3].purpose, purpose[4].purpose, purpose[5].purpose, purpose[6].purpose, purpose[7].purpose, purpose[8].purpose, purpose[9].purpose, purpose[10].purpose, purpose[11].purpose]) //This domain is to pull whichever purpose had the largest donated value, I did not finish this so it's showing the pink if it has Administrative costs
+            
+            //console.log(purpose[11].purpose) there are 11 different purposes
+            //console.log(mapData.features[0].properties.value)
+
+            //This part is like the other map
+            let container = d3.select(containerID)
+            //Create Projection
+            let projection = d3
+                .geoNaturalEarth1()
+                //.geoOrthographic()
+                .fitSize([WIDTH, HEIGHT-50], mapData)
+                .translate([WIDTH/2, HEIGHT/2])
+                .rotate([200,0])
+            //Create geoPath 
+            let path = d3.geoPath()
+                .projection(projection);
+
+            //Draw Sphere - Border Around the map
+            container.append("path")
+                .datum({type: "Sphere"})
+                .attr("fill", "white")
+                .attr("stroke", "black")
+                .attr("strike-width", 1)
+                .attr("d", path)
+            //Draw Graticule 
+            let graticule = d3.geoGraticule()
+            container.append("g")
+                .append("path")
+                .datum(graticule)
+                .attr("d", path)
+                .attr("class", "graticule")
+
+            //Draw Map - Draw the countries borders
+            container
+                .append("g")
+                //.attr("transform", `scale (2, -2) translate(${WIDTH/4}, ${-HEIGHT/4})`) //removed for projection
+                .selectAll("path")
+                .data(mapData.features)
+                .enter()
+                    .append("path")
+                        .attr("fill", d => d.properties.value ? colorScale(d.properties.value) : "#555")  //TODO - Video 3 - Color Each Country based on the largest earthquake data (lagestdonationByYear merged into mapData)
+                        .attr("d", path)
+                        .attr("stroke", "white")
+                        .attr("stroke-width", 0.5)
+                        .append("title")
+                            .text(d => d.properties.name)
+        }
+        
+        //This function filters the data returning only data of a giving indicator
+        function getDataForIndicator(data, indicator) { 
+            indicatorData = data.filter(d => d["country"] === indicator);
+            //console.log(indicatorData)
+            return indicatorData
+        }
+    
+function drawLineChart(lineData){
+                //-------------------------- Prepare Data --------------------------
+
+                                                    
+                //transform and combine the data, generating an array, where each item is an year with values for exports and imports.
+                let data = Object.keys(lineData)
+                    .filter(k => !isNaN(+k)) //Remove keys that are not numbers (years)
+                    .map(k => ({
+                        "year": +lineData[k].year,
+                        "donated": +lineData[k].donated
+                    }))
+                //console.log(data)
+
+
+                //-------------------------- Create Scales --------------------------
+                //Compute values for scale Domain -------
+                yearRange = d3.extent(data, d => d.year) //extent computes both, min and max at the same time.
+
+                //we want the overall maximum value, that is why we use Math.max to return the maximum value between imports and exports.
+                //Note the diference between d3.max and Math.max, the former is a javascript function, not d3's, and it bahaves a bit different.
+                maxValue = d3.max(data, d => Math.max(d.donated, d.donated)) //Only one value we are looking at so I put it twice
+
+                //Create Scales -------
+                xScale = d3.scaleLinear()
+                    .range([0 , WIDTH]) //RANGE FOR SCALE
+                    .domain(yearRange)
+                //console.log(xScale.domain())
+
+                yScale = d3.scaleLinear()
+                    .range([0, HEIGHT - MARGIN.top - MARGIN.bottom])
+                    .domain([maxValue, 0]) //Coordinates in SVG are top-bottom, but we want the line to go bottom-up, for that reason we invert the domain.
+                //console.log(yScale.domain())
+                
+
+
+                //-------------------------- Draw Lines --------------------------
+
+                //Create Line generators
+                const donatedLine = d3.line()
+                    .x(d => xScale(d.year))
+                    .y(d => yScale(d.donated))
+                
+                //Add Lines
+                let chartBody = d3.select("#LineChart")
+                    .append("g")
+                    .attr("transform", `translate(${MARGIN.left}, ${MARGIN.top})`)
+
+                chartBody.append("path")
+                    .datum(data)
+                    .attr("fill", "none")
+                    .attr("stroke", "blue")
+                    .attr("d", donatedLine)
+
+                
+                //-------------------------- Add Axes --------------------------
+                
+                //Create Axes -------
+                let yAxis = d3.axisLeft(yScale) //CREATE Y AXIS
+                    .tickFormat(v => v/1e9);
+                
+                let xAxis = d3.axisBottom(xScale) //CREATE X AXIS
+                    .tickFormat(d3.format("d"))
+                
+               yAxisGroup = d3.select("#LineChart")
+                    .append("g")
+                        .attr("transform", `translate(${MARGIN.left},${MARGIN.top})`)
+                        .call(yAxis)
+                        .append("text")
+                            .text("Billion $")
+                            .attr("dx", -MARGIN.left+15)
+                            .attr("dy", MARGIN.top+15)
+                            .attr("text-anchor", "middle")
+                            .attr("fill", "black")
+                            .attr("transform", `rotate(270, ${-MARGIN.left+15},${MARGIN.top+15})`)
+
+                //Draw the X Axis
+                xAxisGroup = d3.select("#LineChart")
+                    .append("g")
+                        .attr("transform", `translate(${MARGIN.left},${HEIGHT - MARGIN.bottom})`)
+                        .call(xAxis)
+                        .append("text")
+                            .text("Year")
+                            .attr("dx", CHART_BODY_WIDTH/2)
+                            .attr("dy", 30)
+                            .attr("text-anchor", "middle")
+                            .attr("fill", "black")
+                            .attr("transform", `rotate(0, ${MARGIN.left},${MARGIN.bottom})`)
+                
+                xAxisGroup.selectAll(".tick text")
+                    .attr('transform', "rotation(270,-5,9)")
+                    .attr("dx", -5)
+                    .attr("text-anchor", "end")               
+
+            }        
+        
+        function loadData() {
+            d3.queue()
+                .defer(d3.json, "countries.geo.json")
+                .defer(d3.csv, "donation.csv")
+                .defer(d3.csv, "donation_by_year.csv")
+                .defer(d3.csv, "purpose.csv")
+                .await((err, mapData, aggDonation, donationByYear, purpose) => {
+                
+                    mergeInfoIntoMapData(mapData, aggDonation)
+                    drawBaseMap(mapData, aggDonation, "#map")
+                
+                    mergeInfoIntoMapData2(mapData, aggDonation)
+                    drawBaseMap(mapData, donationByYear, "#map2")
+                
+                    mergeInfoIntoMapData3(mapData, purpose)
+                    drawPurposeMap(mapData, purpose, "#purposeMap")
+                
+                //console.log(aggDonation)
+                })
+        }
+        
+        function loadData2(cb){
+            d3.csv("donation_by_year.csv", (err, data) => {
+                cb(data)
+ 
+            })
+        }
+        
+        function drawData(data, country){
+
+            //Call Function to draw the Line chart for the given country
+            let Country = country
+            drawLineChart(
+                getDataForIndicator(data, Country)
+            )
+        }
+        
+        //This is for the search button
+        function myFunction() {
+            document.getElementById("myDropdown").classList.toggle("show");
+            
+        }
+        //This is also for the search button
+        function filterFunction() {
+            var input, filter, ul, li, a, i;
+            input = document.getElementById("myInput");
+            filter = input.value.toUpperCase();
+            div = document.getElementById("myDropdown");
+            a = div.getElementsByTagName("a");
+            for (i = 0; i < a.length; i++) {
+                if (a[i].innerHTML.toUpperCase().indexOf(filter) > -1) {
+                    a[i].style.display = "";
+                } else {
+                    a[i].style.display = "none";
+                }
+            }
+        }
+             
+        
+        //This function is called once another country is selected
+        function updateLineChart(country) {
+            d3.selectAll("svg > *").remove(); //Clears the charts so there isn't overlap
+            main(country)//reloads main with country selected in parameters
+
+        }
+
+        //main has potential country parameter for middle map
+        function main(country) {
+            d3.select("#map")
+                .attr("width", WIDTH)
+                .attr("height", HEIGHT)
+            d3.select("#map2")
+                .attr("width", WIDTH)
+                .attr("height", HEIGHT)
+            d3.select("#lineChart")
+                .attr("width", WIDTH)
+                .attr("height", HEIGHT)
+            d3.select("#purposeMap")
+                .attr("width", WIDTH)
+                .attr("height", HEIGHT)
+            loadData() //This loads all except the linechart
+            
+            //If main parameter as a value through search, this function will load the site with that country selected
+            if(country !== undefined) {
+                loadData2((data) => {drawData(data, country)})
+            }
+            //Else the linechart is loaded with Australia as default
+            else{
+                loadData2((data) => {drawData(data, 'Australia')})
+            }
+        
+        }
+        main()        
+        
+    </script>
+</html>
