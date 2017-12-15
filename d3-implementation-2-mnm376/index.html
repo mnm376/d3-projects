@@ -1,0 +1,326 @@
+<html>
+    <head>
+        <title>D3 Implementation</title>
+        <script src="d3.js"></script>
+        <style>
+            
+            body {
+                text-align: center;
+            }
+            svg {
+                border: solid 1px #000;
+            }
+            h1 { 
+                font-size: 6em;
+            }
+
+        </style>
+    </head>
+    <body>
+        <h1>Charts for Donor/Recipients</h1>
+        <!-- Did the legend by image because of lack of time -->
+        <h2><img src = "intensity.png"><img></h2>
+        
+        <svg id="chart">
+            <text
+              text-anchor="middle"
+              dx = "400"
+              dy = "2399"
+              style="
+                     font-size: 25;
+                     font-family: arial;
+                     font-weight: bold;
+                     fill: #017be3
+                     "
+            >
+            Networks
+            </text>
+            
+        </svg>
+        
+        <svg id="map2">
+            <text
+              text-anchor="middle"
+              dx = "1987"
+              dy = "1399"
+              style="
+                     font-size: 25;
+                     font-family: arial;
+                     font-weight: bold;
+                     fill: #017be3
+                     "
+            >
+            Matrix
+            </text>
+        </svg>
+
+    </body>
+    <script>
+        
+        const WIDTH = 800
+        const HEIGHT = 2400
+        const MARGIN = {
+            left: 20,
+            top: 20,
+            bottom: 20,
+            right: 20
+        }
+
+        const CHART_BODY_WIDTH = WIDTH - MARGIN.left - MARGIN.right;
+        const CHART_BODY_HEIGHT = HEIGHT - MARGIN.top - MARGIN.bottom;
+    
+    function drawSlopeChart(id, data, spData) {
+        
+        let container = d3.select(id);
+        
+        //This is the scaleband for donors
+        let yScale = d3.scaleBand()
+            .range([0, CHART_BODY_HEIGHT])
+            .domain(data.nodes)
+        
+        //This is the scaleband for recipients
+        let yScale2 = d3.scaleBand()
+            .range([0, CHART_BODY_HEIGHT])
+            .domain(data.links)
+        
+        
+        /*testing values: 
+
+            console.log(yScale.domain())
+            console.log(data.nodes)
+            console.log(yScale2.domain())
+            console.log(yScale2.domain()[1])
+            console.log(data.links)
+        */
+        
+        //This is the position of the countries
+        let leftLabel = 150;
+        let rightLabel = CHART_BODY_WIDTH - 150;
+        
+        
+        /* This was supposed to get me the proper values for max,min,avg but the avg > max so I input them manually
+        
+        let maximum = d3.max(spData, d => d.amount);
+        let avg = d3.mean(spData, d => d.amount);
+        let minimum = d3.min(spData, d => d.amount);
+        console.log(spData[0].amount)
+        */
+        
+        //First colorsScale is for countries 
+        let colorScale = d3.scaleOrdinal(d3.schemeCategory20b)
+        
+        //Second colorscale is for the lines
+        let colorScale2 = d3.scaleLinear()
+            .range(["#ff9300", "#ffe200" ,"#ff0000"])
+            .domain([64, 304146049.9, 21014003259])
+        //console.log(colorScale2.domain())
+        
+        let strokeScale = d3.scaleLinear()
+            .range([0,10])
+            .domain([0, 21014003259])
+        
+        //Countries on the left container
+        container
+            .append("g")
+            .attr("transform", `translate(${MARGIN.left}, ${MARGIN.top})`)
+            .selectAll("text")
+            .data(yScale.domain())
+            .enter()
+                .append("text")
+                .attr("dx", leftLabel)
+                .attr("dy", d => yScale(d))
+                .attr("fill", d => colorScale(d))
+                .attr("text-anchor", "end")
+                .attr("alignment-baseline", "middle")
+                .text(d => d)
+
+        //Countries on the right container
+        container
+            .append("g")
+            .attr("transform", `translate(${MARGIN.left}, ${MARGIN.top})`)
+            .selectAll("text")
+            .data(yScale2.domain())
+            .enter()
+                .append("text")
+                .attr("dx", rightLabel)
+                .attr("dy", d => yScale2(d))
+                .attr("fill", d => colorScale(d))
+                .attr("alignment-baseline", "middle")
+                .text(d => d)
+    
+        //Lines container
+        container 
+            .append("g")
+            .attr("transform", `translate(${MARGIN.left}, ${MARGIN.top})`)
+            .selectAll("line")
+            .data(spData)
+            .enter()
+                .append("line")
+                .attr("x1", d => leftLabel)
+                .attr("y1", d => yScale(d.donor))
+                .attr("x2", d => rightLabel)
+                .attr("y2", d => yScale2(d.recipient))
+                .attr("stroke", d => colorScale2(d.amount))
+                .attr("stroke-width", d => strokeScale(d.value))
+                .attr("opacity", .079)
+                            
+
+    }
+        
+        function drawMatrixChart(id, spData){
+            //console.log(spData)
+            
+            let container = d3.select(id);
+            
+            //color for states, I understand this creates more color conflict because we do not need it but simply black looks dull so I decided to keep it
+            let color = d3.scaleOrdinal(d3.schemeCategory20b)
+            let leftLabel = 150;
+            
+            //color intensity for each square, yellow->orange->red
+            //minimum amount, avg amount, maximum amount were hard-coded because .max() .min() were giving problems I think because of undefined values 
+            let colorScale2 = d3.scaleLinear()
+                .range(["#ff9300", "#ffe200" ,"#ff0000"])
+                .domain([64, 304146049.9, 21014003259])
+            
+            
+            let yScale = d3.scaleBand()
+                .range([0, CHART_BODY_HEIGHT])
+                .domain(spData.map(d => d.donor))
+            
+            let xScale = d3.scaleBand()
+                .range([0, CHART_BODY_WIDTH])
+                .domain(spData.map(d => d.recipient))
+            
+            //console.log(yScale.domain())
+            //console.log(xScale.domain())
+            
+            
+            //Vertical lines
+            container.append("g")
+                .attr("transform", `translate(${MARGIN.left}, ${MARGIN.top+200})`)
+                .selectAll("text")
+                .data(yScale.domain())
+                .enter()
+                .append('text')
+                    .text(d => d)
+                    .attr("dx", leftLabel)
+                    //yScale is divided by 2 to bring countries closer together
+                    .attr("dy", d => yScale(d)/2)
+                    .attr("text-anchor", "end")
+                    .attr("fill", d => color(d))            
+            
+            //horizontal lines
+            container.append("g")
+                .attr("transform", `translate(${MARGIN.left+15}, ${MARGIN.top+200})`)
+                .selectAll("text")
+                .data(xScale.domain())
+                .enter()
+                .append('text')
+                    .text(d => d)
+                    .attr("dx", d => xScale(d))
+                    .attr("x", 20)
+                    .attr("y", 160)
+                    //xScale is multiplied by 4 to spread out for the numerous recipient countries
+                    .attr("dy", d => xScale(d)*4)
+                    .attr("text-anchor", "start")
+                    .attr("text-alignment", "middle")
+                    .attr("fill", d => color(d))
+                    .attr("transform", d =>`rotate(-90, ${xScale(d)}, ${0})`)
+            
+            //rectangles
+            container.append("g")
+                .attr("transform", `translate(${MARGIN.left+160}, ${MARGIN.top+185})`)
+                .selectAll("rect")
+                .data(spData)
+                .enter()
+                .append("rect")
+                    //xScale multiplied by 5 to closely match the size of the horizontal country text, or else the boxes are misaligned
+                    .attr("x", d => xScale(d.recipient)*5)
+                    //yScale divided by 2 to keep the same alignment with countries (line 201)
+                    .attr("y", d => yScale(d.donor)/2)
+                    //width and height manually put to match the distance between each country
+                    .attr("width", 24.675324675324678)
+                    .attr("height", 25.652173913043477)
+                    .attr("fill", d => colorScale2(d.amount))
+            
+            //vertical lines
+            container.append("g")
+                .attr("transform", `translate(${MARGIN.left+160}, ${MARGIN.top+185})`)
+                .selectAll("line")
+                .data(xScale.domain())
+                .enter()
+                .append("line")
+                    //x1,x2 multiplied by 5 to closely match the size of the horizontal country text, or else the boxes are misaligned
+                    .attr("x1", d => xScale(d)*5)            
+                    .attr("x2", d => xScale(d)*5)            
+                    .attr("y1", 0)
+                    //y2 manually put to line up with last country, Qatar (which I think is the last value on xScale?) probably had to do this because of the undefined country
+                    .attr("y2", 1154.35)
+                    .attr("stroke", "#ccc")
+            
+            //horizontal lines
+            container.append("g")
+                .attr("transform", `translate(${MARGIN.left+160}, ${MARGIN.top+185})`)
+                .selectAll("line")
+                .data(spData)
+                .enter()
+                .append("line")
+                    //yScale divided by 2 to keep the same alignment with countries (line 201)
+                    .attr("y1", d => yScale(d.donor)/2)            
+                    .attr("y2", d => yScale(d.donor)/2)            
+                    .attr("x1", 0)
+                    //x2 manually put to line up with last country, Turks and Caicos Islands (which I think is the last value on xScale?) probably had to do this because of the undefined country
+                    .attr("x2", 3775.32)
+                    .attr("stroke", "#ccc")
+            
+        }
+        
+        function loadData() {
+            d3.queue()
+                .defer(d3.csv, "donations_donnor_recipient_amount_geo.csv")
+                .await((err, data) => {
+                
+                
+                //Used this to get the proper dy for the countries
+                let state = {
+                    
+                    "nodes": [],
+                    "links": []
+                    
+                } 
+                for (let i = 0; i < data.length; i++){
+                    state.nodes.push(data[i].donor)
+                    state.links.push(data[i].recipient)
+                }
+                
+                //Used this as a map for the color
+                let SpecificData = Object.keys(data)
+                        .map(k => ({ 
+                            "donor": data[k].donor,
+                            "recipient": data[k].recipient,
+                            "amount" : data[k].amount
+                        }))
+                //console.log(SpecificData)
+                //console.log(state)
+                
+                //Used state at first but learned how to use the data via mapping (SpecificData) so used both for slope chart
+                drawSlopeChart("#chart", state, SpecificData);
+                
+                //Learned to use just specificData for the second chart
+                drawMatrixChart("#map2", SpecificData);
+                
+        })}
+        
+        function main() {
+            d3.select("#chart")
+                .attr("width", WIDTH)
+                .attr("height", HEIGHT)
+            d3.select("#map2")
+                .attr("width", WIDTH +3175)
+                .attr("height", HEIGHT-1000)
+            loadData()     
+        }
+        main()        
+        
+    </script>
+</html>
