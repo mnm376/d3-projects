@@ -1,0 +1,253 @@
+<html>
+    <head>
+        <title>D3 Implementation</title>
+        <script src="d3.js"></script>
+        <style>
+            
+            body {
+                text-align: center;
+            }
+            svg {
+                border: solid 1px #000;
+            }
+            h1 { 
+                font-size: 1em;
+            }
+
+        </style>
+    </head>
+    <body>
+        <h1>Restaurant Ratings Chart</h1>
+        <svg id="chart">
+            <text
+              text-anchor="middle"
+              dx = "250"
+              dy = "10"
+              style="
+                     font-size: 12;
+                     font-family: arial;
+                     font-weight: bold;
+                     fill: #017be3
+                     "
+            >
+            Quarters
+            </text> 
+        </svg>
+    </body>
+    <script>
+        
+        //constants
+        const WIDTH = 2000
+        const HEIGHT = 3000
+        const MARGIN = {
+            left: 70,
+            top: 250,
+            bottom: 250,
+            right: 250
+        }
+
+        const CHART_BODY_WIDTH = WIDTH - MARGIN.left - MARGIN.right;
+        const CHART_BODY_HEIGHT = HEIGHT - MARGIN.top - MARGIN.bottom;
+        
+        function drawChart(id, spData, categories, business_id, business_name, quarter, rating, flatQuarters){
+            
+            let container = d3.select(id);
+            let color = d3.scaleOrdinal(d3.schemeCategory20)
+            let leftLabel = 150;
+
+            let maximum = d3.max(rating, d => +d);
+            let avg = d3.mean(rating, d => +d);
+            let minimum = d3.min(rating, d => +d);
+            
+            let colorIntensity = d3.scaleLinear()
+                .range(["#ff3100", "#ffe200" ,"#1fc700"])
+                .domain([minimum, avg, maximum])
+
+			var color1 = d3.scaleOrdinal() 
+			  .domain(["Indian", "American (Traditional)", "Mexican", "Chinese", "Japanese", "French", "Vietnamese", "Greek", "Thai", "Italian", "Mediterranean"])
+			  .range(["#ff6c00", "#0013fd" , "#eb00ff", "#9b9b06", "#009933" , "#ff1400", "#ff89bf", "#01c1b2", "#89ff00","#790a01", "#998d00"]);
+            
+            let yScale = d3.scaleBand()
+                .range([0, CHART_BODY_HEIGHT])
+                .domain(spData.map(d => d.business_name))
+                //.domain(flatQuarters.map(d => d.name))
+			
+            console.log("yScale.domain() is")
+            console.log(yScale.domain())
+            
+            let xScale = d3.scaleBand()
+                .range([0, CHART_BODY_WIDTH])
+                //.domain(quarter, d => d) 
+				.domain(flatQuarters.map(d => d.quarter)) 
+            console.log("xScale.domain() is")
+            console.log(xScale.domain()) 
+			
+			//testscale.domain() needs to look exactly like xScale.domain()
+            let testScale = d3.scaleBand()
+                .range([0, CHART_BODY_WIDTH])
+                .domain(["2005-04-01", "2005-07-01", "2005-10-01", "2006-01-01", "2006-04-01", "2006-07-01", "2006-10-01", "2007-01-01", "2007-04-01", "2007-07-01", "2007-10-01", "2008-01-01", "2008-04-01", "2008-07-01", "2008-10-01", "2009-01-01", "2009-04-01", "2009-07-01", "2009-10-01", "2010-01-01", "2010-04-01", "2010-07-01", "2010-10-01", "2011-01-01", "2011-04-01", "2011-07-01", "2011-10-01", "2012-01-01", "2012-04-01", "2012-07-01", "2012-10-01", "2013-01-01", "2013-04-01", "2013-07-01","2013-10-01", "2014-01-01", "2014-04-01", "2014-07-01", "2014-10-01", "2015-01-01", "2015-04-01", "2015-07-01", "2015-10-01", "2016-01-01", "2016-04-01", "2016-07-01", "2016-10-01", "2017-01-01", "2017-04-01", "2017-07-01"])
+		
+            //console.log("testScale.domain() is")
+            //console.log(testScale.domain())
+            
+            //Vertical lines
+            container.append("g")
+                .attr("transform", `translate(${MARGIN.left+100}, ${MARGIN.top})`)
+                .selectAll("text")
+                .data(spData)
+                .enter()
+                .append('text')
+                    .text(d => d.business_name)
+                    .attr("dx", leftLabel)
+                    .attr("dy", d => yScale(d.business_name))
+                    .attr("text-anchor", "end")
+                    .attr("fill", d => color1(d.category))        
+            
+            //Horizontal lines
+            container.append("g")
+                .attr("transform", `translate(${MARGIN.left+100}, ${MARGIN.top})`)
+                .selectAll("text")
+                .data(testScale.domain())
+                .enter()
+                .append('text')
+                    .text(d => d)
+                    .attr("dx", d => testScale(d))
+                    .attr("x", 20)
+                    .attr("y", 180)
+                    .attr("text-anchor", "start")
+                    .attr("text-alignment", "middle")
+                    .attr("fill", "black")
+                    .attr("transform", d =>`rotate(-90, ${testScale(d)}, ${0})`)
+            
+			//console.log(yScale("Serendipity 3"))
+			//console.log(spData[0].quarters[0].quarter)
+              //rectangles
+            container.append("g")
+                .attr("transform", `translate(${MARGIN.left+260}, ${MARGIN.top-15})`)
+                .selectAll("rect")
+                .data(flatQuarters)
+                .enter()
+                .append("rect")
+                    .attr("y", d => yScale(d.name))
+                    .attr("x", d => xScale(d.quarter)) 
+                    .attr("width", 34.6)
+                    .attr("height", 26.041666666666668)
+                    .attr("fill", d => colorIntensity(d.rating))   
+			
+			container.append("g")
+                .attr("transform", `translate(${MARGIN.left+260}, ${MARGIN.top})`)
+                .selectAll("text")
+                .data(flatQuarters)
+                .enter()
+                .append("text")
+					.text(d => d.count)
+                    .attr("y", d => yScale(d.name))
+                    .attr("x", d => xScale(d.quarter)) 
+                    .attr("width", 34.6)
+                    .attr("height", 26.041666666666668)
+                    .attr("fill", "black")
+					.attr("text-alignment", "middle")
+			
+			container.append("g")
+                .attr("transform", `translate(${MARGIN.left+260}, ${MARGIN.top-15})`)
+                .selectAll("line")
+				.data(flatQuarters)
+				.enter()
+				.append("line")
+					.attr("x1", d => xScale(d.quarter))
+					.attr("x2", d => xScale(d.quarter))
+					.attr("y1", 0)
+					.attr("y2", CHART_BODY_HEIGHT)
+					.attr("stroke", "#aca9a9")
+			
+            container.append("g")
+                .attr("transform", `translate(${MARGIN.left+260}, ${MARGIN.top-15})`)
+                .selectAll("line")
+				.data(yScale.domain())
+				.enter()
+				.append("line")
+					.attr("y1", d => yScale(d))
+					.attr("y2", d => yScale(d))
+					.attr("x1", 0)
+					.attr("x2", CHART_BODY_WIDTH)
+					.attr("stroke", "#aca9a9")
+            
+            
+            
+        }
+        
+        function loadData() {
+            d3.queue()
+                .defer(d3.json, "Las Vegas Business.json")
+                .await((err, data) => {
+                var categories = new Set();
+                for ( let i = 0; i < data.length; i++) {
+                    categories.add(data[i].category)
+                    }
+                var business_id = new Array();
+                for ( let i = 0; i < data.length; i++) {
+                    business_id.push(data[i].business_id)               
+				}
+                var business_name = new Array();
+                for ( let i = 0; i < data.length; i++) {
+                    business_name.push(data[i].business_name)               
+				}
+                var quarter = new Array();
+                for ( let i = 0; i < data.length; i++) {
+                    for ( let j = 0; j < data[i].quarters.length; j++){
+                        quarter.push(data[i].quarters[j].quarter)
+                    }
+                }
+                var rating = new Array();
+                for ( let i = 0; i < data.length; i++) {
+                    for ( let j = 0; j < data[i].quarters.length; j++){
+                        rating.push(data[i].quarters[j].rating)
+                    }
+                    }
+/*				let newData = Object.keys(quarter)
+                for ( let i = 0; i < data.length; i++) {
+                    for ( let j = 0; j < data[i].quarters.length; j++){
+                        newData.map( k =>({
+							"name": data[i].business_name,
+							"quarter": data[i].quarters[j].quarter,
+							"rating": data[i].quarters[j].rating
+						}))
+                    }} */       
+				let flatQuarters = []
+				for ( let i = 0; i < data.length; i++) {
+                    for ( let j = 0; j < data[i].quarters.length; j++){
+                        flatQuarters.push({
+							"name": data[i].business_name,
+							"quarter": data[i].quarters[j].quarter,
+							"rating": data[i].quarters[j].rating,
+							"count": data[i].quarters[j].count
+						})
+                    }}
+				
+					
+				console.log(flatQuarters)
+				
+				console.log(data)
+				
+                data.sort(function(x, y){
+                    return d3.ascending(x.category, y.category)
+                })
+				
+                
+                drawChart("#chart", data, categories, business_id, business_name, quarter, rating, flatQuarters);
+                 
+                console.log(categories)
+                })                
+            }
+        
+        function main() {
+            d3.select("#chart")
+                .attr("width", WIDTH+50)
+                .attr("height", HEIGHT-200)
+            
+            loadData()
+        }
+        
+        main() 
+    </script>
+</html>
