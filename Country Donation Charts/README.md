@@ -6,4 +6,4 @@ How do donations distribute across the globe? How much does each country receive
 How has the distribution of donations across the globe changed over time? Are there countries that became mostly donors after being receivers (or the other way around)?
 
 Do certain type of disbursements tend to concentrate in some geographical areas (received)? Are there major differences in how different type of disbursements distribute geographically?
-![Alt text](https://user-images.githubusercontent.com/10874703/33335216-6e913cc6-d43a-11e7-8cfc-7a3f4d7701a4.png "Optional title")
+![Alt text](https://user-images.githubusercontent.com/10874703/33335216-6e913cc6-d43a-11e7-8cfc-7a3f4d7701a4.png "Map")
